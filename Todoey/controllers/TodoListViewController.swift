@@ -14,11 +14,15 @@ class TodoListViewController: UITableViewController {
     var itemArray = [Item]()
     let defaults = UserDefaults.standard
     let context = (UIApplication.shared.delegate as! AppDelegate).persistentContainer.viewContext
+    var selectedCategory : Category?{
+        didSet{
+            loadItems()
+        }
+    }
     
     override func viewDidLoad() {
         super.viewDidLoad()
         print(FileManager.default.urls(for: .documentDirectory, in: .userDomainMask))
-        loadItems(request: Item.fetchRequest())
     }
     
     
@@ -27,7 +31,6 @@ class TodoListViewController: UITableViewController {
         let cell = tableView.dequeueReusableCell(withIdentifier: "ToDoItemCell", for: indexPath)
         let item = itemArray[indexPath.row]
         cell.textLabel?.text = item.title
-        
         cell.accessoryType = item.done ? .checkmark : .none
         return cell
         
@@ -59,6 +62,7 @@ class TodoListViewController: UITableViewController {
             let addedItem = Item(context: self.context)
             addedItem.title = textField.text!
             addedItem.done = false
+            addedItem.parentCategory = self.selectedCategory
             self.itemArray.append(addedItem)
             self.savedata()
         }
@@ -80,7 +84,16 @@ class TodoListViewController: UITableViewController {
         tableView.reloadData()
     }
     
-    func loadItems(request: NSFetchRequest<Item> = Item.fetchRequest()){
+    func loadItems(request: NSFetchRequest<Item> = Item.fetchRequest(), predicate: NSPredicate? = nil){
+        let categoryPredicate = NSPredicate(format: "parentCategory.name MATCHES %@", selectedCategory!.name!)
+        
+        if let additionalPredicate = predicate {
+            request.predicate = NSCompoundPredicate(andPredicateWithSubpredicates: [categoryPredicate, additionalPredicate])
+        }
+        else{
+            request.predicate = categoryPredicate
+        }
+        
         do{
             itemArray =  try context.fetch(request)
         }
